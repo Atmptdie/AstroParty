@@ -92,30 +92,80 @@ class Border(pygame.sprite.Sprite):
 
 
 class Pilot(Object):
-    def __init__(self, group, path, x, y, v, a, angle, player):
-        super().__init__(group, path, x, y, v, a, angle)
+    BASE_SPEED = 120
+
+    def __init__(self, group, path, x, y, angle, player):
+        super().__init__(group, path, x, y, 0, 0, angle)
         self.active = False
         self.rotating = False
         self.player = player
+        self.mask = pygame.mask.from_surface(self.image)
+        self.colliding = {'h': False, 'v': False}
+        self.charged = False
 
     def set_active(self, x, y, angle):
         self.x = x
         self.y = y
         self.angle = angle
+        self.vx = Pilot.BASE_SPEED * sin(rad(self.angle))
+        self.vy = Pilot.BASE_SPEED * cos(rad(self.angle))
+        self.image = rot_center(self.base_image, angle)
         self.active = True
         self.add(pilot_sprites)
+
+    def charge(self):
+        self.charged = True
+        self.vx = Pilot.BASE_SPEED * -sin(rad(self.angle))
+        self.vy = Pilot.BASE_SPEED * -cos(rad(self.angle))
 
     def killed(self):
         self.kill()
         self.active = False
+        self.rotating = False
 
     def update(self, dt):
         super().update(dt)
         if self.rotating:
             self.angle += WSPEED * dt
             self.image = pygame.transform.rotate(self.base_image, self.angle)
-            self.ax = -BASE_ACC * sin(rad(self.angle))
-            self.ay = -BASE_ACC * cos(rad(self.angle))
+        if not self.charged:
+            try:
+                self.ax = -(self.vx ** 2) / self.vx * 0.5
+            except ZeroDivisionError:
+                self.ax = 0
+            try:
+                self.ay = -(self.vx ** 2) / self.vx * 0.5
+            except ZeroDivisionError:
+                self.ay = 0
+        else:
+            self.vx = Pilot.BASE_SPEED * -sin(rad(self.angle))
+            self.vy = Pilot.BASE_SPEED * -cos(rad(self.angle))
+        check_collision = {'v': False, 'h': False}
+        if pygame.sprite.spritecollideany(self, horizontal_borders):
+            check_collision['h'] = True
+
+        if pygame.sprite.spritecollideany(self, vertical_borders):
+            check_collision['v'] = True
+
+        if check_collision['v']:
+            if not self.colliding['v']:
+                self.colliding['v'] = True
+                self.vx_C = self.vx
+            if not (self.ax * self.vx_C < 0 and self.vx_C * self.vx < 0):
+                self.vx = 0
+        else:
+            self.colliding['v'] = False
+            self.vx_C = 0
+
+        if check_collision['h']:
+            if not self.colliding['h']:
+                self.colliding['h'] = True
+                self.vy_C = self.vy
+            if not (self.ay * self.vy_C < 0 and self.vy_C * self.vy < 0):
+                self.vy = 0
+        else:
+            self.colliding['h'] = False
+            self.vy_C = 0
 
 
 class CollisionCirlce(pygame.sprite.Sprite):
@@ -170,6 +220,7 @@ class Ship(Object):
         self.collision_cirlce.kill()
         self.kill()
         self.player.pilot.set_active(self.x, self.y, self.angle)
+        self.rotating = False
 
     def pew(self):
         Bullet(bullets, 'bullet.png', self.x + ship_iwidth // 2 - ship_iwidth // 2 * sin(rad(self.angle)),
@@ -177,6 +228,10 @@ class Ship(Object):
 
     def revive(self):
         x, y = self.player.pilot.x, self.player.pilot.y
+        angle = self.player.pilot.angle
+        self.angle = angle
+        self.image = rot_center(self.base_image, angle)
+        self.vx = self.vy = 1
         self.x = x
         self.y = y
         self.add(ships_sprites)
@@ -189,12 +244,11 @@ class Ship(Object):
         if self.rotating:
             self.angle += WSPEED * dt
             self.image = rot_center(self.base_image, self.angle)
-            self.ax = -BASE_ACC * sin(rad(self.angle))
-            self.ay = -BASE_ACC * cos(rad(self.angle))
+        self.ax = -BASE_ACC * sin(rad(self.angle))
+        self.ay = -BASE_ACC * cos(rad(self.angle))
         check_collision = self.collision_cirlce.update(self.x + ship_iwidth // 2 + 4 * sin(rad(self.angle)) - 9,
                                                        self.y + ship_iheight // 2 + 4 * cos(rad(self.angle)) - 9)
         if check_collision['v']:
-            print('v')
             if not self.colliding['v']:
                 self.colliding['v'] = True
                 self.vx_C = self.vx
@@ -205,7 +259,6 @@ class Ship(Object):
             self.vx_C = 0
 
         if check_collision['h']:
-            print('h')
             if not self.colliding['h']:
                 self.colliding['h'] = True
                 self.vy_C = self.vy
@@ -293,19 +346,20 @@ field.prep_map()
 for i in range(player_number):
     ship = Ship(ships_sprites, f'ship_player{i + 1}.png', *start_coords[i], 0, BASE_ACC,
                 180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1), player=None)
-    pilot = Pilot(pilot_sprites, f'pilot_player{i + 1}.png', 0, 0, 0, BASE_ACC, 0, player=None)
+    pilot = Pilot(pilot_sprites, f'pilot_player{i + 1}.png', 0, 0, 0, player=None)
     pilot.kill()
     field.add_player(Player(ship, pilot, i + 1))
 
 #180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1)
 running = True
 fps = 60
+revive_time = 5
 clock = pygame.time.Clock()
 while running:
     for player in field.players:
         if type(player.active_object()) == Pilot:
             player.ship.timer += 1
-            if player.ship.timer >= fps * 5:
+            if player.ship.timer >= fps * revive_time:
                 player.ship.revive()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -315,10 +369,16 @@ while running:
                 field.players[0].active_object().rotating = True
 
             if event.key == 273:
-                field.players[0].active_object().pew()
+                if type(field.players[0].active_object()) == Ship:
+                    field.players[0].ship.pew()
+                elif type(field.players[0].active_object()) == Pilot:
+                    field.players[0].pilot.charge()
 
             if event.key == 119:
-                field.players[1].active_object().pew()
+                if type(field.players[1].active_object()) == Ship:
+                    field.players[1].ship.pew()
+                elif type(field.players[1].active_object()) == Pilot:
+                    field.players[1].pilot.charge()
 
             if event.key == 100:
                 field.players[1].active_object().rotating = True
@@ -327,9 +387,17 @@ while running:
             if event.key == 275:
                 field.players[0].active_object().rotating = False
 
+            if event.key == 273:
+                if type(field.players[0].active_object()) == Pilot:
+                    field.players[0].pilot.charged = False
+
             if event.key == 100:
                 field.players[1].active_object().rotating = False
-            print(event.key)
+
+            if event.key == 119:
+                if type(field.players[1].active_object()) == Pilot:
+                    field.players[1].pilot.charged = False
+
     #  (0, 70, 139) - dark blue color
     screen.fill(pygame.Color('black'))
     clock.tick(fps)

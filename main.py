@@ -5,7 +5,7 @@ from math import sin, cos, radians as rad, sqrt
 
 SHIP, PILOT, KILLED = 2, 1, 0
 BASE_ACC = 780  # basic acceleration
-WSPEED = 180  # angles per second rotating speed
+WSPEED = 200  # angles per second rotating speed
 MAX_SPEED = 180
 ship_iwidth, ship_iheight = 30, 30  # image size
 pygame.init()
@@ -70,6 +70,7 @@ horizontal_borders = pygame.sprite.Group()
 vertical_borders = pygame.sprite.Group()
 ships_sprites = pygame.sprite.Group()
 bullets = pygame.sprite.Group()
+pilot_sprites = pygame.sprite.Group()
 
 
 class Border(pygame.sprite.Sprite):
@@ -93,8 +94,16 @@ class Border(pygame.sprite.Sprite):
 class Pilot(Object):
     def __init__(self, group, path, x, y, v, a, angle, player):
         super().__init__(group, path, x, y, v, a, angle)
-        self.active = True
+        self.active = False
         self.rotating = False
+        self.player = player
+
+    def set_active(self, x, y, angle):
+        self.x = x
+        self.y = y
+        self.angle = angle
+        self.active = True
+        self.add(pilot_sprites)
 
     def killed(self):
         self.kill()
@@ -133,8 +142,10 @@ class CollisionCirlce(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(self, bullets):
             if b.player != self.player:
                 result['b'] = True
+                b.kill()
 
         return result
+
 
 class Bullet(Object):
     def __init__(self, group, path, x, y, v, a, angle, player):
@@ -146,6 +157,7 @@ class Ship(Object):
     def __init__(self, group, path, x, y, v, a, angle, player=None):
         super().__init__(group, path, x, y, v, a, angle)
         self.player = player
+        self.timer = 0
         self.active = True
         self.vx_C = self.vy_C = 0  # speed before collision
         self.rotating = False
@@ -153,12 +165,24 @@ class Ship(Object):
         self.collision_cirlce = CollisionCirlce(self.x + (ship_iwidth - 18) / 2, self.y + 10, 9, self)
 
     def shot(self):
+        self.timer = 0
         self.active = False
+        self.collision_cirlce.kill()
         self.kill()
+        self.player.pilot.set_active(self.x, self.y, self.angle)
 
     def pew(self):
-        bullet = Bullet(bullets, 'bullet.png', self.x + ship_iwidth - ship_iwidth // 2 * sin(rad(self.angle)),
-                        self.y + ship_iheight - ship_iheight // 2 * cos(rad(self.angle)), 500, 0, self.angle, self)
+        Bullet(bullets, 'bullet.png', self.x + ship_iwidth // 2 - ship_iwidth // 2 * sin(rad(self.angle)),
+                        self.y + ship_iheight // 2 - ship_iheight // 2 * cos(rad(self.angle)), 500, 0, self.angle, self)
+
+    def revive(self):
+        x, y = self.player.pilot.x, self.player.pilot.y
+        self.x = x
+        self.y = y
+        self.add(ships_sprites)
+        self.collision_cirlce = CollisionCirlce(self.x + (ship_iwidth - 18) / 2, self.y + 10, 9, self)
+        self.active = True
+        self.player.pilot.killed()
 
     def update(self, dt):
         super().update(dt)
@@ -167,10 +191,6 @@ class Ship(Object):
             self.image = rot_center(self.base_image, self.angle)
             self.ax = -BASE_ACC * sin(rad(self.angle))
             self.ay = -BASE_ACC * cos(rad(self.angle))
-            # if abs(self.ax) < 1 and self.vx != 0:
-            #     self.ax = -60 * abs(self.vx) / self.vx  # костыль
-            # if abs(self.ay) < 1 and self.vy != 0:
-            #     self.ay = -60 * abs(self.vy) / self.vy
         check_collision = self.collision_cirlce.update(self.x + ship_iwidth // 2 + 4 * sin(rad(self.angle)) - 9,
                                                        self.y + ship_iheight // 2 + 4 * cos(rad(self.angle)) - 9)
         if check_collision['v']:
@@ -211,7 +231,9 @@ class Ship(Object):
 class Player:
     def __init__(self, ship: Ship, pilot: Pilot, number: int):
         self.ship = ship
+        self.ship.player = self
         self.pilot = pilot
+        self.pilot.player = self
         self.number = number
 
     def active_object(self):
@@ -262,7 +284,7 @@ class Field:
 
 
 # start menu over here
-player_number = 1
+player_number = 2
 start_coords = [(offset, offset), (-offset + width - 2 * ship_iwidth, -offset + height - 2 * ship_iheight),
                 (offset + width - ship_iwidth, offset), (offset, offset + height - ship_iheight)]
 
@@ -270,14 +292,21 @@ field = Field(map_name='map1.txt')
 field.prep_map()
 for i in range(player_number):
     ship = Ship(ships_sprites, f'ship_player{i + 1}.png', *start_coords[i], 0, BASE_ACC,
-                180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1), player=i + 1)
-    field.add_player(Player(ship, None, i + 1))
+                180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1), player=None)
+    pilot = Pilot(pilot_sprites, f'pilot_player{i + 1}.png', 0, 0, 0, BASE_ACC, 0, player=None)
+    pilot.kill()
+    field.add_player(Player(ship, pilot, i + 1))
 
 #180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1)
 running = True
 fps = 60
 clock = pygame.time.Clock()
 while running:
+    for player in field.players:
+        if type(player.active_object()) == Pilot:
+            player.ship.timer += 1
+            if player.ship.timer >= fps * 5:
+                player.ship.revive()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -289,7 +318,7 @@ while running:
                 field.players[0].active_object().pew()
 
             if event.key == 119:
-                pass
+                field.players[1].active_object().pew()
 
             if event.key == 100:
                 field.players[1].active_object().rotating = True
@@ -311,6 +340,8 @@ while running:
     horizontal_borders.update()
     bullets.draw(screen)
     bullets.update(1 / fps)
+    pilot_sprites.draw(screen)
+    pilot_sprites.update(1 / fps)
     ships_sprites.draw(screen)
     ships_sprites.update(1 / fps)
     pygame.display.flip()

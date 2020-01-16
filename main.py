@@ -116,6 +116,10 @@ class Pilot(Object):
             self.image = pygame.transform.rotate(self.base_image, self.angle)
             self.ax = -BASE_ACC * sin(rad(self.angle))
             self.ay = -BASE_ACC * cos(rad(self.angle))
+        b = pygame.sprite.spritecollideany(self, bullets)
+        ship = pygame.sprite.spritecollideany(self, ships_sprites)
+        if b or ship:
+            self.killed()
 
 
 class CollisionCirlce(pygame.sprite.Sprite):
@@ -245,7 +249,7 @@ class Player:
             return None
 
 
-offset = 100
+offset = 110
 
 
 class Field:
@@ -285,7 +289,7 @@ class Field:
 
 # start menu over here
 player_number = 2
-start_coords = [(offset, offset), (-offset + width - 2 * ship_iwidth, -offset + height - 2 * ship_iheight),
+start_coords = [(offset + 5, offset + 5), (-offset + width - 2 * ship_iwidth, -offset + height - 2 * ship_iheight),
                 (offset + width - ship_iwidth, offset), (offset, offset + height - ship_iheight)]
 
 field = Field(map_name='map1.txt')

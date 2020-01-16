@@ -2,7 +2,6 @@ import pygame
 import os
 from math import sin, cos, radians as rad, sqrt
 
-
 SHIP, PILOT, KILLED = 2, 1, 0
 BASE_ACC = 780  # basic acceleration
 WSPEED = 200  # angles per second rotating speed
@@ -75,7 +74,6 @@ pilot_sprites = pygame.sprite.Group()
 
 class Border(pygame.sprite.Sprite):
     modes = ['horizontal', 'vertical']
-
     def __init__(self, mode, x, y):
         if mode in Border.modes:
             super().__init__(horizontal_borders if mode == 'horizontal' else vertical_borders)
@@ -83,12 +81,19 @@ class Border(pygame.sprite.Sprite):
             raise Exception('WRONG MODE')
 
         if mode == 'horizontal':
-            self.image = pygame.Surface([ship_iwidth, 1])
-            self.rect = pygame.Rect(x, y, ship_iwidth, 1)
+            self.image = pygame.Surface([ship_iwidth, 4])
+            self.rect = pygame.Rect(x, y, ship_iwidth, 4)
         elif mode == 'vertical':
-            self.image = pygame.Surface([1, ship_iheight])
-            self.rect = pygame.Rect(x, y, 1, ship_iheight)
+            self.image = pygame.Surface([4, ship_iheight])
+            self.rect = pygame.Rect(x, y, 4, ship_iheight)
         self.image.fill(pygame.Color('blue'))
+
+    def update(self, *args):
+        super().update(self, *args)
+        b = pygame.sprite.spritecollideany(self, bullets)
+        if pygame.sprite.spritecollideany(self, bullets):
+            b.kill()
+
 
 
 class Pilot(Object):
@@ -118,41 +123,6 @@ class Pilot(Object):
             self.ay = -BASE_ACC * cos(rad(self.angle))
 
 
-class CollisionCirlce(pygame.sprite.Sprite):
-    def __init__(self, x, y, r, player):
-        super().__init__(col_sprites)
-        self.r = r
-        self.player = player
-        self.image = pygame.Surface((2 * r, 2 * r), pygame.SRCALPHA, 32)
-        pygame.draw.circle(self.image, pygame.Color("red"), (int(r), int(r)), int(r))
-        self.rect = pygame.Rect(x, y, 2 * r, 2 * r)
-
-    def update(self, x, y):
-        self.rect.x = int(x)
-        self.rect.y = int(y)
-        result = {'h': False, 'v': False, 's': [False, []], 'b': False}
-        if pygame.sprite.spritecollideany(self, horizontal_borders):
-            result['h'] = True
-        if pygame.sprite.spritecollideany(self, vertical_borders):
-            result['v'] = True
-        if len(pygame.sprite.spritecollide(self, col_sprites, False)) > 1:
-            result['s'][0] = True
-            result['s'][1] = pygame.sprite.spritecollide(self, col_sprites, False)[1:]
-        b = pygame.sprite.spritecollideany(self, bullets)
-        if pygame.sprite.spritecollideany(self, bullets):
-            if b.player != self.player:
-                result['b'] = True
-                b.kill()
-
-        return result
-
-
-class Bullet(Object):
-    def __init__(self, group, path, x, y, v, a, angle, player):
-        super().__init__(group, path, x, y, v, a, angle)
-        self.player = player
-
-
 class Ship(Object):
     def __init__(self, group, path, x, y, v, a, angle, player=None):
         super().__init__(group, path, x, y, v, a, angle)
@@ -173,7 +143,7 @@ class Ship(Object):
 
     def pew(self):
         Bullet(bullets, 'bullet.png', self.x + ship_iwidth // 2 - ship_iwidth // 2 * sin(rad(self.angle)),
-                        self.y + ship_iheight // 2 - ship_iheight // 2 * cos(rad(self.angle)), 500, 0, self.angle, self)
+               self.y + ship_iheight // 2 - ship_iheight // 2 * cos(rad(self.angle)), 500, 0, self.angle, self)
 
     def revive(self):
         x, y = self.player.pilot.x, self.player.pilot.y
@@ -219,13 +189,48 @@ class Ship(Object):
             self.shot()
 
 
+class CollisionCirlce(pygame.sprite.Sprite):
+    def __init__(self, x, y, r, player):
+        super().__init__(col_sprites)
+        self.r = r
+        self.player = player
+        self.image = pygame.Surface((2 * r, 2 * r), pygame.SRCALPHA, 32)
+        pygame.draw.circle(self.image, pygame.Color("red"), (int(r), int(r)), int(r))
+        self.rect = pygame.Rect(x, y, 2 * r, 2 * r)
+
+    def update(self, x, y):
+        self.rect.x = int(x)
+        self.rect.y = int(y)
+        result = {'h': False, 'v': False, 's': [False, []], 'b': False}
+        if pygame.sprite.spritecollideany(self, horizontal_borders):
+            result['h'] = True
+        if pygame.sprite.spritecollideany(self, vertical_borders):
+            result['v'] = True
+        if len(pygame.sprite.spritecollide(self, col_sprites, False)) > 1:
+            result['s'][0] = True
+            result['s'][1] = pygame.sprite.spritecollide(self, col_sprites, False)[1:]
+        b = pygame.sprite.spritecollideany(self, bullets)
+        if pygame.sprite.spritecollideany(self, bullets):
+            if b.player != self.player:
+                result['b'] = True
+                b.kill()
+
+        return result
+
+
+class Bullet(Object):
+    def __init__(self, group, path, x, y, v, a, angle, player):
+        super().__init__(group, path, x, y, v, a, angle)
+        self.player = player
+
+
 #  TODO collision with ships
-        # if check_collision['s'][0]:
-        #     vx = [self.vx]
-        #     vy = [self.vy]
-        #     for sprite in check_collision['s'][1]:
-        #         vx.append(sprite.player.vx)
-        #         vy.append(sprite.player.vy)
+# if check_collision['s'][0]:
+#     vx = [self.vx]
+#     vy = [self.vy]
+#     for sprite in check_collision['s'][1]:
+#         vx.append(sprite.player.vx)
+#         vy.append(sprite.player.vy)
 
 
 class Player:
@@ -297,7 +302,7 @@ for i in range(player_number):
     pilot.kill()
     field.add_player(Player(ship, pilot, i + 1))
 
-#180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1)
+# 180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1)
 running = True
 fps = 60
 clock = pygame.time.Clock()
@@ -345,4 +350,3 @@ while running:
     ships_sprites.draw(screen)
     ships_sprites.update(1 / fps)
     pygame.display.flip()
-

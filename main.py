@@ -83,12 +83,18 @@ class Border(pygame.sprite.Sprite):
             raise Exception('WRONG MODE')
 
         if mode == 'horizontal':
-            self.image = pygame.Surface([ship_iwidth, 1])
-            self.rect = pygame.Rect(x, y, ship_iwidth, 1)
+            self.image = pygame.Surface([ship_iwidth, 4])
+            self.rect = pygame.Rect(x, y, ship_iwidth, 4)
         elif mode == 'vertical':
-            self.image = pygame.Surface([1, ship_iheight])
-            self.rect = pygame.Rect(x, y, 1, ship_iheight)
+            self.image = pygame.Surface([4, ship_iheight])
+            self.rect = pygame.Rect(x, y, 4, ship_iheight)
         self.image.fill(pygame.Color('blue'))
+
+    def update(self, *args):
+        super().update(self, *args)
+        b = pygame.sprite.spritecollideany(self, bullets)
+        if pygame.sprite.spritecollideany(self, bullets):
+            b.kill()
 
 
 class Pilot(Object):
@@ -99,7 +105,6 @@ class Pilot(Object):
         self.active = False
         self.rotating = False
         self.player = player
-        self.mask = pygame.mask.from_surface(self.image)
         self.colliding = {'h': False, 'v': False}
         self.charged = False
 
@@ -167,6 +172,11 @@ class Pilot(Object):
             self.colliding['h'] = False
             self.vy_C = 0
 
+        b = pygame.sprite.spritecollideany(self, bullets)
+        ship = pygame.sprite.spritecollideany(self, ships_sprites)
+        if b or ship:
+            self.killed()
+
 
 class CollisionCirlce(pygame.sprite.Sprite):
     def __init__(self, x, y, r, player):
@@ -188,13 +198,6 @@ class CollisionCirlce(pygame.sprite.Sprite):
         if len(pygame.sprite.spritecollide(self, col_sprites, False)) > 1:
             result['s'][0] = True
             result['s'][1] = pygame.sprite.spritecollide(self, col_sprites, False)[1:]
-        b = pygame.sprite.spritecollideany(self, bullets)
-        if pygame.sprite.spritecollideany(self, bullets):
-            if b.player != self.player:
-                result['b'] = True
-                b.kill()
-
-        return result
 
 
 class Bullet(Object):
@@ -224,7 +227,7 @@ class Ship(Object):
 
     def pew(self):
         Bullet(bullets, 'bullet.png', self.x + ship_iwidth // 2 - ship_iwidth // 2 * sin(rad(self.angle)),
-                        self.y + ship_iheight // 2 - ship_iheight // 2 * cos(rad(self.angle)), 500, 0, self.angle, self)
+               self.y + ship_iheight // 2 - ship_iheight // 2 * cos(rad(self.angle)), 500, 0, self.angle, self)
 
     def revive(self):
         x, y = self.player.pilot.x, self.player.pilot.y
@@ -249,6 +252,7 @@ class Ship(Object):
         check_collision = self.collision_cirlce.update(self.x + ship_iwidth // 2 + 4 * sin(rad(self.angle)) - 9,
                                                        self.y + ship_iheight // 2 + 4 * cos(rad(self.angle)) - 9)
         if check_collision['v']:
+            print('v')
             if not self.colliding['v']:
                 self.colliding['v'] = True
                 self.vx_C = self.vx
@@ -259,6 +263,7 @@ class Ship(Object):
             self.vx_C = 0
 
         if check_collision['h']:
+            print('h')
             if not self.colliding['h']:
                 self.colliding['h'] = True
                 self.vy_C = self.vy
@@ -338,7 +343,7 @@ class Field:
 
 # start menu over here
 player_number = 2
-start_coords = [(offset, offset), (-offset + width - 2 * ship_iwidth, -offset + height - 2 * ship_iheight),
+start_coords = [(offset + 5, offset + 5), (-offset + width - 2 * ship_iwidth, -offset + height - 2 * ship_iheight),
                 (offset + width - ship_iwidth, offset), (offset, offset + height - ship_iheight)]
 
 field = Field(map_name='map1.txt')
@@ -350,7 +355,7 @@ for i in range(player_number):
     pilot.kill()
     field.add_player(Player(ship, pilot, i + 1))
 
-#180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1)
+# 180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1)
 running = True
 fps = 60
 revive_time = 5

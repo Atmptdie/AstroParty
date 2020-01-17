@@ -314,7 +314,7 @@ while running:
     for player in field.players:
         if type(player.active_object()) == Pilot:
             player.ship.timer += 1
-            if player.ship.timer > fps * 5:
+            if player.ship.timer >= fps * 5:
                 player.ship.revive()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:

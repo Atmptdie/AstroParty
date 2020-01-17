@@ -381,7 +381,16 @@ def Game():
                         field.players[1].pilot.charge()
                 if event.key == 100:
                     field.players[1].active_object().rotating = True
+
+                if event.key == 264:
+                    if type(field.players[2].active_object()) == Ship:
+                        field.players[2].ship.pew()
+                    elif type(field.players[2].active_object()) == Pilot:
+                        field.players[2].pilot.charge()
+                if event.key == 262:
+                    field.players[2].active_object().rotating = True
             if event.type == pygame.KEYUP:
+                print(event.key)
                 if event.key == 275:
                     field.players[0].active_object().rotating = False
                 if event.key == 273:
@@ -392,7 +401,13 @@ def Game():
                 if event.key == 119:
                     if type(field.players[1].active_object()) == Pilot:
                         field.players[1].pilot.charged = False
-        #  (0, 70, 139) - dark blue color
+                if event.key == 264:
+                    if type(field.players[2].active_object()) == Ship:
+                        field.players[2].ship.pew()
+                    elif type(field.players[2].active_object()) == Pilot:
+                        field.players[2].pilot.charge()
+                if event.key == 262:
+                    field.players[2].active_object().rotating = True
         if len(pilot_sprites.sprites() + ships_sprites.sprites()) == 1:
             if ships_sprites.sprites():
                 return ships_sprites.sprites()[0]

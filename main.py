@@ -198,6 +198,13 @@ class CollisionCirlce(pygame.sprite.Sprite):
         if len(pygame.sprite.spritecollide(self, col_sprites, False)) > 1:
             result['s'][0] = True
             result['s'][1] = pygame.sprite.spritecollide(self, col_sprites, False)[1:]
+        b = pygame.sprite.spritecollideany(self, bullets)
+        if pygame.sprite.spritecollideany(self, bullets):
+            if b.player != self.player:
+                result['b'] = True
+                b.kill()
+
+        return result
 
 
 class Bullet(Object):

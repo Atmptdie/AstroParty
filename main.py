@@ -347,9 +347,9 @@ class Field:
 
 
 # start menu over here
-player_number = 2
+player_number = 3
 start_coords = [(offset + 5, offset + 5), (-offset + width - 2 * ship_iwidth, -offset + height - 2 * ship_iheight),
-                (offset + width - ship_iwidth, offset), (offset, offset + height - ship_iheight)]
+                (width - offset - 30 - ship_iwidth, offset + 10), (offset, offset + height - ship_iheight)]
 
 field = Field(map_name='map1.txt')
 field.prep_map()
@@ -426,24 +426,25 @@ for i in range(player_number):
 
 def draw():
     global running
-    tick = 0
     font = pygame.font.Font(None, 50)
-    for i in range(3*fps + 1):
+    while True:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                return None
+            try:
+                if event.type == pygame.QUIT:
+                    running = False
+                    return None
+                if event.key == 32:
+                    return None
+            except:
+                pass
 
-        timer = font.render(str(3 - int(i / fps)), 1, (100, 255, 100))
+        timer = font.render('tap space to continue', 1, (100, 255, 100))
         timer_x = width // 2 - timer.get_width() // 2
         timer_y = height // 4 - timer.get_height() // 2
         timer_w = timer.get_width()
         timer_h = timer.get_height()
-        if i % fps == 0:
-            screen.fill((0, 0, 0))
-            screen.blit(timer, (timer_x, timer_y))
-        pygame.draw.rect(screen, (0, 255, 0), (timer_x - 10, timer_y - 10,
-                                               timer_w + 20, timer_h + 20), 1)
+        screen.blit(timer, (timer_x, timer_y))
+
         score_text = font.render(f'{score}', 1, (100, 255, 100))
         score_x = width // 2 - score_text.get_width() // 2
         score_y = height // 2 - score_text.get_height() // 2
@@ -465,6 +466,7 @@ while running:
     field.prep_map()
     field.players.clear()
     ships_sprites.empty()
+    pilot_sprites.empty()
     col_sprites.empty()
     bullets.empty()
     for i in range(player_number):
@@ -477,6 +479,5 @@ while running:
     if winner:
         score[field.players.index(winner.player) + 1] += 1
         draw()
-    else:
-        draw()
+
 

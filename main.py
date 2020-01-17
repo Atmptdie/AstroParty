@@ -74,6 +74,7 @@ pilot_sprites = pygame.sprite.Group()
 
 class Border(pygame.sprite.Sprite):
     modes = ['horizontal', 'vertical']
+
     def __init__(self, mode, x, y):
         if mode in Border.modes:
             super().__init__(horizontal_borders if mode == 'horizontal' else vertical_borders)
@@ -93,7 +94,6 @@ class Border(pygame.sprite.Sprite):
         b = pygame.sprite.spritecollideany(self, bullets)
         if pygame.sprite.spritecollideany(self, bullets):
             b.kill()
-
 
 
 class Pilot(Object):
@@ -289,68 +289,85 @@ class Field:
                     Border('vertical', offset + (x + 1) * ship_iwidth, offset + y * ship_iheight)
 
     def add_player(self, player: Player):
+        player_colors = ['red', 'blue', 'green', 'purple']
         self.players.append(player)
 
 
 # start menu over here
 player_number = 2
+
 start_coords = [(offset + 5, offset + 5), (-offset + width - 2 * ship_iwidth, -offset + height - 2 * ship_iheight),
                 (offset + width - ship_iwidth, offset), (offset, offset + height - ship_iheight)]
-
 field = Field(map_name='map1.txt')
-field.prep_map()
-for i in range(player_number):
-    ship = Ship(ships_sprites, f'ship_player{i + 1}.png', *start_coords[i], 0, BASE_ACC,
-                180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1), player=None)
-    pilot = Pilot(pilot_sprites, f'pilot_player{i + 1}.png', 0, 0, 0, BASE_ACC, 0, player=None)
-    pilot.kill()
-    field.add_player(Player(ship, pilot, i + 1))
 
-# 180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1)
+def Game():
+    global running
+    while True:
+        for player in field.players:
+            if type(player.active_object()) == Pilot:
+                player.ship.timer += 1
+                if player.ship.timer >= fps * 5:
+                    player.ship.revive()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                return None
+            if event.type == pygame.KEYDOWN:
+                if event.key == 275:
+                    field.players[0].active_object().rotating = True
+
+                if event.key == 273:
+                    field.players[0].active_object().pew()
+
+                if event.key == 119:
+                    field.players[1].active_object().pew()
+
+                if event.key == 100:
+                    field.players[1].active_object().rotating = True
+
+            if event.type == pygame.KEYUP:
+                if event.key == 275:
+                    field.players[0].active_object().rotating = False
+
+                if event.key == 100:
+                    field.players[1].active_object().rotating = False
+                print(event.key)
+        #  (0, 70, 139) - dark blue color
+        if len(pilot_sprites.sprites() + ships_sprites.sprites()) == 1:
+            return ships_sprites.sprites()[0]
+        screen.fill(pygame.Color('black'))
+        clock.tick(fps)
+        col_sprites.draw(screen)
+        vertical_borders.draw(screen)
+        horizontal_borders.draw(screen)
+        vertical_borders.update()
+        horizontal_borders.update()
+        bullets.draw(screen)
+        bullets.update(1 / fps)
+        pilot_sprites.draw(screen)
+        pilot_sprites.update(1 / fps)
+        ships_sprites.draw(screen)
+        ships_sprites.update(1 / fps)
+        pygame.display.flip()
+
+
 running = True
 fps = 60
 clock = pygame.time.Clock()
+score = {1: 0, 2: 0, 3: 0, 4: 0}
 while running:
-    for player in field.players:
-        if type(player.active_object()) == Pilot:
-            player.ship.timer += 1
-            if player.ship.timer >= fps * 5:
-                player.ship.revive()
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == 275:
-                field.players[0].active_object().rotating = True
-
-            if event.key == 273:
-                field.players[0].active_object().pew()
-
-            if event.key == 119:
-                field.players[1].active_object().pew()
-
-            if event.key == 100:
-                field.players[1].active_object().rotating = True
-
-        if event.type == pygame.KEYUP:
-            if event.key == 275:
-                field.players[0].active_object().rotating = False
-
-            if event.key == 100:
-                field.players[1].active_object().rotating = False
-            print(event.key)
-    #  (0, 70, 139) - dark blue color
-    screen.fill(pygame.Color('black'))
-    clock.tick(fps)
-    col_sprites.draw(screen)
-    vertical_borders.draw(screen)
-    horizontal_borders.draw(screen)
-    vertical_borders.update()
-    horizontal_borders.update()
-    bullets.draw(screen)
-    bullets.update(1 / fps)
-    pilot_sprites.draw(screen)
-    pilot_sprites.update(1 / fps)
-    ships_sprites.draw(screen)
-    ships_sprites.update(1 / fps)
-    pygame.display.flip()
+    field.prep_map()
+    field.players.clear()
+    ships_sprites.empty()
+    col_sprites.empty()
+    bullets.empty()
+    for i in range(player_number):
+        ship = Ship(ships_sprites, f'ship_player{i + 1}.png', *start_coords[i], 0, BASE_ACC,
+                    180 * ((i + 1) % 2) + 45 * (1 if i < 2 else -1), player=None)
+        pilot = Pilot(pilot_sprites, f'pilot_player{i + 1}.png', 0, 0, 0, BASE_ACC, 0, player=None)
+        pilot.kill()
+        field.add_player(Player(ship, pilot, i + 1))
+    winner = Game()
+    if winner:
+        score[field.players.index(winner.player) + 1] += 1
+    print(score)

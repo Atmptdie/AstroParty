@@ -259,7 +259,6 @@ class Ship(Object):
         check_collision = self.collision_cirlce.update(self.x + ship_iwidth // 2 + 4 * sin(rad(self.angle)) - 9,
                                                        self.y + ship_iheight // 2 + 4 * cos(rad(self.angle)) - 9)
         if check_collision['v']:
-            print('v')
             if not self.colliding['v']:
                 self.colliding['v'] = True
                 self.vx_C = self.vx
@@ -270,7 +269,6 @@ class Ship(Object):
             self.vx_C = 0
 
         if check_collision['h']:
-            print('h')
             if not self.colliding['h']:
                 self.colliding['h'] = True
                 self.vy_C = self.vy
@@ -359,38 +357,49 @@ field.prep_map()
 
 def Game():
     global running
-    while True:
+    while running:
         for player in field.players:
             if type(player.active_object()) == Pilot:
                 player.ship.timer += 1
-                if player.ship.timer >= fps * 5:
+                if player.ship.timer >= fps * revive_time:
                     player.ship.revive()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-                return None
             if event.type == pygame.KEYDOWN:
                 if event.key == 275:
                     field.players[0].active_object().rotating = True
-
                 if event.key == 273:
-                    field.players[0].active_object().pew()
-
+                    if type(field.players[0].active_object()) == Ship:
+                        field.players[0].ship.pew()
+                    elif type(field.players[0].active_object()) == Pilot:
+                        field.players[0].pilot.charge()
                 if event.key == 119:
-                    field.players[1].active_object().pew()
-
+                    if type(field.players[1].active_object()) == Ship:
+                        field.players[1].ship.pew()
+                    elif type(field.players[1].active_object()) == Pilot:
+                        field.players[1].pilot.charge()
                 if event.key == 100:
                     field.players[1].active_object().rotating = True
-
             if event.type == pygame.KEYUP:
                 if event.key == 275:
                     field.players[0].active_object().rotating = False
-
+                if event.key == 273:
+                    if type(field.players[0].active_object()) == Pilot:
+                        field.players[0].pilot.charged = False
                 if event.key == 100:
                     field.players[1].active_object().rotating = False
+                if event.key == 119:
+                    if type(field.players[1].active_object()) == Pilot:
+                        field.players[1].pilot.charged = False
         #  (0, 70, 139) - dark blue color
         if len(pilot_sprites.sprites() + ships_sprites.sprites()) == 1:
-            return ships_sprites.sprites()[0]
+            if ships_sprites.sprites():
+                return ships_sprites.sprites()[0]
+            else:
+                return pilot_sprites.sprites()[0]
+        elif len(pilot_sprites.sprites() + ships_sprites.sprites()) < 1:
+            return None
         screen.fill(pygame.Color('black'))
         clock.tick(fps)
         col_sprites.draw(screen)
@@ -467,5 +476,7 @@ while running:
     winner = Game()
     if winner:
         score[field.players.index(winner.player) + 1] += 1
+        draw()
+    else:
         draw()
 

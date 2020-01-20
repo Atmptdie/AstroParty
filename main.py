@@ -350,7 +350,7 @@ player_number = 3
 start_coords = [(offset + 5, offset + 5), (-offset + width - 2 * ship_iwidth, -offset + height - 2 * ship_iheight),
                 (width - offset - 30 - ship_iwidth, offset + 10), (offset, offset + height - ship_iheight)]
 
-field = Field(map_name='map1.txt')
+field = Field(map_name='map2.txt')
 field.prep_map()
 
 

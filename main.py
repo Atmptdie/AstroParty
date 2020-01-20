@@ -380,7 +380,6 @@ def Game():
                         field.players[1].pilot.charge()
                 if event.key == 100 and field.players[1].active_object():
                     field.players[1].active_object().rotating = True
-
                 if event.key == 264:
                     if type(field.players[2].active_object()) == Ship:
                         field.players[2].ship.pew()
@@ -399,13 +398,7 @@ def Game():
                 if event.key == 119:
                     if type(field.players[1].active_object()) == Pilot:
                         field.players[1].pilot.charged = False
-                if event.key == 264:
-                    if type(field.players[2].active_object()) == Ship:
-                        field.players[2].ship.pew()
-                    elif type(field.players[2].active_object()) == Pilot:
-                        field.players[2].pilot.charge()
-                if event.key == 262 and field.players[2].active_object():
-                    field.players[2].active_object().rotating = True
+
         if len(pilot_sprites.sprites() + ships_sprites.sprites()) == 1:
             if ships_sprites.sprites():
                 return ships_sprites.sprites()[0]

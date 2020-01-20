@@ -398,6 +398,8 @@ def Game():
                 if event.key == 119:
                     if type(field.players[1].active_object()) == Pilot:
                         field.players[1].pilot.charged = False
+                if event.key == 262 and field.players[2].active_object():
+                    field.players[2].active_object().rotating = False
 
         if len(pilot_sprites.sprites() + ships_sprites.sprites()) == 1:
             if ships_sprites.sprites():
@@ -447,8 +449,6 @@ def draw():
         timer = font.render('tap space to continue', 1, (100, 255, 100))
         timer_x = width // 2 - timer.get_width() // 2
         timer_y = height // 4 - timer.get_height() // 2
-        timer_w = timer.get_width()
-        timer_h = timer.get_height()
         screen.blit(timer, (timer_x, timer_y))
 
         score_text = font.render(f'{score}', 1, (100, 255, 100))
